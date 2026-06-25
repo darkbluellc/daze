@@ -1,14 +1,11 @@
 import { DateTime } from "luxon";
 
 import { prisma } from "@/lib/db";
+import { subtractLeadTime, atLocalTime, formatLeadTime } from "@/lib/dates";
 import {
-  nextOccurrence,
-  occurrenceInYear,
-  ageOnOccurrence,
-  subtractLeadTime,
-  atLocalTime,
-  formatLeadTime,
-} from "@/lib/dates";
+  subscriptionOccurrence,
+  buildNotificationContent,
+} from "@/lib/services/notification-content";
 
 const DEFAULT_HORIZON_DAYS = 45;
 
@@ -17,6 +14,7 @@ type Slot = {
   scheduledFor: DateTime;
   title: string;
   body: string;
+  url: string;
 };
 
 /** A date-only UTC Date for the @db.Date column (no tz drift). */
@@ -64,58 +62,32 @@ export async function materializeUser(
   for (const sub of subscriptions) {
     const effectiveTime = sub.dayOfTimeOverride || user.defaultNotifyTime;
 
-    // Resolve this subscription's occurrence date + display facts.
-    let occ: DateTime;
-    let title: string;
-    let bodyToday: string;
-    let leadPhrase: (rel: string) => string;
-
-    if (sub.contact) {
-      const c = sub.contact;
-      occ = nextOccurrence(c.birthdayMonth, c.birthdayDay, tz, now);
-      const age = ageOnOccurrence(c.birthdayYear, occ);
-      title = `🎂 ${c.displayName}'s birthday`;
-      bodyToday = age
-        ? `${c.displayName} turns ${age} today!`
-        : `It's ${c.displayName}'s birthday today!`;
-      leadPhrase = (rel) =>
-        age
-          ? `${c.displayName}'s birthday is ${rel} — they turn ${age}.`
-          : `${c.displayName}'s birthday is ${rel}.`;
-    } else if (sub.event) {
-      const e = sub.event;
-      if (e.recurringAnnually || e.year == null) {
-        occ = nextOccurrence(e.month, e.day, tz, now);
-      } else {
-        occ = occurrenceInYear(e.year, e.month, e.day, tz);
-        if (occ < now.startOf("day")) continue; // one-off already passed
-      }
-      title = `🎉 ${e.title}`;
-      bodyToday = `${e.title} is today.`;
-      leadPhrase = (rel) => `${e.title} is ${rel}.`;
-    } else {
-      continue;
-    }
+    const occ = subscriptionOccurrence(sub, tz, now);
+    if (!occ) continue; // one-off event already passed, or no target
 
     const slots: Slot[] = [];
 
     if (sub.sendDayOf) {
+      const content = buildNotificationContent(sub, occ, null);
       slots.push({
         leadTimeId: null,
         scheduledFor: atLocalTime(occ, effectiveTime, tz),
-        title,
-        body: bodyToday,
+        ...content,
       });
     }
 
     for (const link of sub.leadTimes) {
       const lt = link.leadTime;
       const leadDate = subtractLeadTime(occ, lt.value, lt.unit);
+      const content = buildNotificationContent(
+        sub,
+        occ,
+        formatLeadTime(lt.value, lt.unit),
+      );
       slots.push({
         leadTimeId: lt.id,
         scheduledFor: atLocalTime(leadDate, effectiveTime, tz),
-        title,
-        body: leadPhrase(`in ${formatLeadTime(lt.value, lt.unit)}`),
+        ...content,
       });
     }
 
@@ -142,6 +114,7 @@ export async function materializeUser(
             dedupeKey: key,
             title: slot.title,
             body: slot.body,
+            url: slot.url,
           },
         });
         scheduled += 1;
@@ -154,6 +127,7 @@ export async function materializeUser(
             scheduledFor: slot.scheduledFor.toJSDate(),
             title: slot.title,
             body: slot.body,
+            url: slot.url,
           },
         });
         scheduled += 1;

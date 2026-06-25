@@ -45,6 +45,7 @@ export default async function BirthdaysPage() {
           sendDayOf: sub.sendDayOf,
           dayOfTimeOverride: sub.dayOfTimeOverride,
           selectedLeadTimeIds: sub.leadTimes.map((l) => l.leadTimeId),
+          notes: c.notes,
         },
       };
     })
@@ -72,6 +73,7 @@ export default async function BirthdaysPage() {
           rows={rows}
           leadTimes={leadTimes.map((lt) => ({ id: lt.id, label: lt.label }))}
           defaultNotifyTime={user.defaultNotifyTime}
+          canSendTest={Boolean(user.pushoverUserKey)}
         />
       )}
     </>

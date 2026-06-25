@@ -4,7 +4,13 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Cake, Sparkles } from "lucide-react";
 
-import { acknowledgeSubscriptionAction } from "@/app/(app)/subscriptions/actions";
+import { toast } from "sonner";
+import { BellRing } from "lucide-react";
+
+import {
+  acknowledgeSubscriptionAction,
+  quickEnableSubscriptionAction,
+} from "@/app/(app)/subscriptions/actions";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -56,6 +62,17 @@ export function OnboardingPrompt({
       remove(subscriptionId);
     });
 
+  const turnOn = (subscriptionId: string) =>
+    startTransition(async () => {
+      const res = await quickEnableSubscriptionAction(subscriptionId);
+      if (res.ok) {
+        toast.success("Day-of reminder turned on.");
+        remove(subscriptionId);
+      } else {
+        toast.error(res.error ?? "Could not enable.");
+      }
+    });
+
   const skipAll = () =>
     startTransition(async () => {
       await Promise.all(
@@ -75,7 +92,8 @@ export function OnboardingPrompt({
             {items.length} new birthday{items.length === 1 ? "" : "s"} found
           </DialogTitle>
           <DialogDescription>
-            New birthdays start with no reminders. Set up the ones you care about.
+            New birthdays start off. Turn on a one-tap day-of reminder, customize,
+            or skip — your call.
           </DialogDescription>
         </DialogHeader>
 
@@ -92,7 +110,14 @@ export function OnboardingPrompt({
                   <p className="text-xs text-muted-foreground">{item.occLabel}</p>
                 </div>
               </div>
-              <div className="flex shrink-0 gap-2">
+              <div className="flex shrink-0 items-center gap-1.5">
+                <Button
+                  size="sm"
+                  disabled={isPending}
+                  onClick={() => turnOn(item.subscriptionId)}
+                >
+                  <BellRing className="size-4" /> Turn on
+                </Button>
                 <SubscriptionConfigDialog
                   itemName={item.name}
                   kind="birthday"
@@ -107,7 +132,9 @@ export function OnboardingPrompt({
                   defaultNotifyTime={defaultNotifyTime}
                   onSaved={() => remove(item.subscriptionId)}
                   trigger={
-                    <Button size="sm">Set up</Button>
+                    <Button size="sm" variant="outline">
+                      Customize
+                    </Button>
                   }
                 />
                 <Button

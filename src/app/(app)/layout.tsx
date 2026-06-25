@@ -7,10 +7,15 @@ import { prisma } from "@/lib/db";
 import { nextOccurrence, ageOnOccurrence, describeUntil } from "@/lib/dates";
 import { Nav } from "@/components/nav";
 import { UserMenu } from "@/components/user-menu";
+import { ThemeToggle } from "@/components/theme-toggle";
 import {
   OnboardingPrompt,
   type OnboardingItem,
 } from "@/components/onboarding/onboarding-prompt";
+import {
+  ConnectionAlertBanner,
+  type BrokenSource,
+} from "@/components/connection-alert-banner";
 
 export default async function AppLayout({
   children,
@@ -22,7 +27,7 @@ export default async function AppLayout({
   const now = DateTime.now().setZone(tz);
 
   // New, unconfigured birthdays to surface in the onboarding prompt.
-  const [unconfigured, leadTimes] = await Promise.all([
+  const [unconfigured, leadTimes, brokenSourceRows] = await Promise.all([
     prisma.subscription.findMany({
       where: { userId: user.id, acknowledgedAt: null, contactId: { not: null } },
       include: { contact: true },
@@ -32,7 +37,16 @@ export default async function AppLayout({
       where: { userId: user.id },
       orderBy: { createdAt: "asc" },
     }),
+    prisma.contactSource.findMany({
+      where: { userId: user.id, status: { in: ["ERROR", "DISCONNECTED"] } },
+      select: { id: true, accountEmail: true },
+    }),
   ]);
+
+  const brokenSources: BrokenSource[] = brokenSourceRows.map((s) => ({
+    id: s.id,
+    label: s.accountEmail ? `Google Contacts (${s.accountEmail})` : "Google Contacts",
+  }));
 
   const onboardingItems: OnboardingItem[] = unconfigured
     .filter((s) => s.contact)
@@ -78,7 +92,8 @@ export default async function AppLayout({
             </span>
             Daze
           </Link>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-1.5">
+            <ThemeToggle />
             <UserMenu name={user.name ?? user.email} email={user.email} />
           </div>
         </header>
@@ -87,6 +102,8 @@ export default async function AppLayout({
         <div className="overflow-x-auto border-b px-2 py-2 md:hidden">
           <Nav className="w-max" />
         </div>
+
+        <ConnectionAlertBanner sources={brokenSources} />
 
         <main className="flex-1 px-4 py-8 md:px-8">
           <div className="mx-auto w-full max-w-5xl">{children}</div>

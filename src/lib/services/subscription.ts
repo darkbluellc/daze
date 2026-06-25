@@ -1,3 +1,5 @@
+import { Prisma } from "@prisma/client";
+
 import { prisma } from "@/lib/db";
 import { materializeUser } from "@/lib/services/materialize";
 import {
@@ -19,7 +21,7 @@ export async function updateSubscriptionConfig(
 
   const sub = await prisma.subscription.findUnique({
     where: { id: subscriptionId },
-    select: { id: true, userId: true },
+    select: { id: true, userId: true, contactId: true },
   });
   if (!sub || sub.userId !== userId) {
     return { ok: false, error: "Subscription not found." };
@@ -32,7 +34,7 @@ export async function updateSubscriptionConfig(
   });
   const leadTimeIds = ownedLeadTimes.map((lt) => lt.id);
 
-  await prisma.$transaction([
+  const ops: Prisma.PrismaPromise<unknown>[] = [
     prisma.subscription.update({
       where: { id: subscriptionId },
       data: {
@@ -46,8 +48,44 @@ export async function updateSubscriptionConfig(
     prisma.subscriptionLeadTime.createMany({
       data: leadTimeIds.map((leadTimeId) => ({ subscriptionId, leadTimeId })),
     }),
-  ]);
+  ];
 
+  // Notes live on the contact, not the subscription.
+  if (input.notes !== undefined && sub.contactId) {
+    ops.push(
+      prisma.contact.update({
+        where: { id: sub.contactId },
+        data: { notes: input.notes.trim() || null },
+      }),
+    );
+  }
+
+  await prisma.$transaction(ops);
+
+  await materializeUser(userId);
+  return { ok: true };
+}
+
+/**
+ * One-click enable with sensible defaults: day-of reminder at the account's
+ * default notify time. The item stays off until this is explicitly called.
+ */
+export async function quickEnableSubscription(
+  userId: string,
+  subscriptionId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const sub = await prisma.subscription.findUnique({
+    where: { id: subscriptionId },
+    select: { id: true, userId: true },
+  });
+  if (!sub || sub.userId !== userId) {
+    return { ok: false, error: "Subscription not found." };
+  }
+
+  await prisma.subscription.update({
+    where: { id: subscriptionId },
+    data: { enabled: true, sendDayOf: true, acknowledgedAt: new Date() },
+  });
   await materializeUser(userId);
   return { ok: true };
 }

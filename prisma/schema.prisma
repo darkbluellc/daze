@@ -100,6 +100,9 @@ model ContactSource {
   status       SourceStatus @default(OK)
   lastError    String?
   lastSyncedAt DateTime?
+  // Set when we have already alerted the user about a broken connection, so we
+  // don't notify on every failed sync. Cleared on successful recovery.
+  alertSentAt  DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -126,6 +129,9 @@ model Contact {
   birthdayMonth Int
   birthdayDay   Int
   birthdayYear  Int?
+
+  // Free-text note surfaced in reminders (e.g. gift ideas).
+  notes String?
 
   raw Json? // raw provider payload for debugging / future fields
 
@@ -272,6 +278,7 @@ model ScheduledNotification {
 
   title String
   body  String
+  url   String? // deep link back into the app (Pushover supplementary URL)
 
   status          NotificationStatus @default(PENDING)
   attempts        Int                @default(0)

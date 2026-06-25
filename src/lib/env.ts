@@ -17,6 +17,13 @@ export const env = {
   databaseUrl: required("DATABASE_URL"),
   encryptionKey: required("DAZE_ENCRYPTION_KEY"),
 
+  // Base URL for deep links in notifications (falls back to AUTH_URL / localhost).
+  appUrl:
+    optional("DAZE_APP_URL") ??
+    optional("AUTH_URL") ??
+    optional("NEXTAUTH_URL") ??
+    "http://localhost:3000",
+
   pushoverAppToken: optional("DAZE_PUSHOVER_APP_TOKEN"),
 
   google: {

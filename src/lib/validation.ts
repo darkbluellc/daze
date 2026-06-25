@@ -52,6 +52,8 @@ export const subscriptionConfigSchema = z.object({
   // Empty string => use the account default notify time.
   dayOfTimeOverride: z.union([timeSchema, z.literal("")]).optional(),
   leadTimeIds: z.array(z.string()).default([]),
+  // Only meaningful for contact (birthday) subscriptions.
+  notes: z.string().max(500).optional(),
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;

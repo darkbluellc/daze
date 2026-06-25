@@ -84,6 +84,7 @@ export default async function HolidaysPage() {
             sources={sourceCards}
             leadTimes={leadTimes.map((lt) => ({ id: lt.id, label: lt.label }))}
             defaultNotifyTime={user.defaultNotifyTime}
+            canSendTest={Boolean(user.pushoverUserKey)}
           />
         )}
       </div>

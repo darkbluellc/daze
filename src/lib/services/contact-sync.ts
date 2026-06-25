@@ -3,6 +3,10 @@ import { encrypt, decrypt } from "@/lib/crypto";
 import { ensureAccessToken } from "@/lib/google/oauth";
 import { GoogleContactProvider } from "@/lib/providers/contacts/google";
 import type { ContactProvider } from "@/lib/providers/contacts/types";
+import {
+  isAuthError,
+  alertContactSourceBroken,
+} from "@/lib/services/connection-alerts";
 
 export type SyncSummary = {
   created: number;
@@ -136,6 +140,7 @@ export async function syncContactSource(sourceId: string): Promise<SyncSummary> 
         lastSyncedAt: new Date(),
         status: "OK",
         lastError: null,
+        alertSentAt: null, // recovered — re-arm alerting
       },
     });
 
@@ -144,10 +149,14 @@ export async function syncContactSource(sourceId: string): Promise<SyncSummary> 
     await prisma.contactSource.update({
       where: { id: source.id },
       data: {
-        status: "ERROR",
+        status: isAuthError(err) ? "DISCONNECTED" : "ERROR",
         lastError: err instanceof Error ? err.message : String(err),
       },
     });
+    // Revoked/expired grant → tell the user (once) to reconnect.
+    if (isAuthError(err)) {
+      await alertContactSourceBroken(source.id).catch(() => {});
+    }
     throw err;
   }
 }

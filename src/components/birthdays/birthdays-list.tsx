@@ -31,10 +31,12 @@ export function BirthdaysList({
   rows,
   leadTimes,
   defaultNotifyTime,
+  canSendTest,
 }: {
   rows: BirthdayRow[];
   leadTimes: LeadTimeOption[];
   defaultNotifyTime: string;
+  canSendTest: boolean;
 }) {
   return (
     <Card>
@@ -58,6 +60,7 @@ export function BirthdaysList({
                 config={r.config}
                 leadTimes={leadTimes}
                 defaultNotifyTime={defaultNotifyTime}
+                canSendTest={canSendTest}
                 trigger={
                   <Button size="sm" variant="outline">
                     <Settings2 className="size-4" /> Configure

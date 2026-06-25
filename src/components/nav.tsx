@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  CalendarClock,
   CalendarDays,
   Cake,
   Clock,
@@ -16,6 +17,7 @@ import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/upcoming", label: "Upcoming", icon: CalendarClock },
   { href: "/birthdays", label: "Birthdays", icon: Cake },
   { href: "/holidays", label: "Holidays", icon: PartyPopper },
   { href: "/lead-times", label: "Lead times", icon: Clock },

@@ -35,10 +35,12 @@ export function HolidaySources({
   sources,
   leadTimes,
   defaultNotifyTime,
+  canSendTest,
 }: {
   sources: HolidaySourceCard[];
   leadTimes: LeadTimeOption[];
   defaultNotifyTime: string;
+  canSendTest: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
 
@@ -104,6 +106,7 @@ export function HolidaySources({
                         config={e.config}
                         leadTimes={leadTimes}
                         defaultNotifyTime={defaultNotifyTime}
+                        canSendTest={canSendTest}
                         trigger={
                           <Button size="sm" variant="outline">
                             <Settings2 className="size-4" /> Configure

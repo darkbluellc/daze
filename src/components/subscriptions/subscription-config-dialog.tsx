@@ -4,7 +4,10 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
-import { saveSubscriptionConfigAction } from "@/app/(app)/subscriptions/actions";
+import {
+  saveSubscriptionConfigAction,
+  sendTestForSubscriptionAction,
+} from "@/app/(app)/subscriptions/actions";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -19,7 +22,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Loader2, Send } from "lucide-react";
 
 export type LeadTimeOption = { id: string; label: string };
 
@@ -29,6 +33,7 @@ export type SubscriptionConfig = {
   sendDayOf: boolean;
   dayOfTimeOverride: string | null;
   selectedLeadTimeIds: string[];
+  notes?: string | null;
 };
 
 export function SubscriptionConfigDialog({
@@ -37,6 +42,7 @@ export function SubscriptionConfigDialog({
   config,
   leadTimes,
   defaultNotifyTime,
+  canSendTest = false,
   trigger,
   open: controlledOpen,
   onOpenChange: controlledOnOpenChange,
@@ -47,6 +53,7 @@ export function SubscriptionConfigDialog({
   config: SubscriptionConfig;
   leadTimes: LeadTimeOption[];
   defaultNotifyTime: string;
+  canSendTest?: boolean;
   trigger?: React.ReactNode;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -60,10 +67,12 @@ export function SubscriptionConfigDialog({
   const [enabled, setEnabled] = useState(config.enabled);
   const [sendDayOf, setSendDayOf] = useState(config.sendDayOf);
   const [dayOfTime, setDayOfTime] = useState(config.dayOfTimeOverride ?? "");
+  const [notes, setNotes] = useState(config.notes ?? "");
   const [selected, setSelected] = useState<Set<string>>(
     new Set(config.selectedLeadTimeIds),
   );
   const [isPending, startTransition] = useTransition();
+  const [isTesting, startTesting] = useTransition();
 
   const toggleLead = (id: string, checked: boolean) =>
     setSelected((prev) => {
@@ -80,6 +89,7 @@ export function SubscriptionConfigDialog({
         sendDayOf,
         dayOfTimeOverride: dayOfTime,
         leadTimeIds: Array.from(selected),
+        notes: kind === "birthday" ? notes : undefined,
       });
       if (res.ok) {
         toast.success(enabled ? "Reminders updated." : "Reminders turned off.");
@@ -89,6 +99,13 @@ export function SubscriptionConfigDialog({
       } else {
         toast.error(res.error ?? "Could not save.");
       }
+    });
+
+  const sendTest = () =>
+    startTesting(async () => {
+      const res = await sendTestForSubscriptionAction(config.id);
+      if (res.ok) toast.success("Test notification sent.");
+      else toast.error(res.error ?? "Could not send test.");
     });
 
   const noLeadTimes = leadTimes.length === 0;
@@ -173,16 +190,53 @@ export function SubscriptionConfigDialog({
               </div>
             </div>
           )}
+
+          {kind === "birthday" && (
+            <div className="space-y-2 border-t pt-5">
+              <Label htmlFor="notes" className="font-medium">
+                Notes
+              </Label>
+              <Textarea
+                id="notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Gift ideas, sizes, anything to remember…"
+                maxLength={500}
+              />
+              <p className="text-xs text-muted-foreground">
+                Included in the reminder so you remember the details.
+              </p>
+            </div>
+          )}
         </div>
 
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => setOpen(false)} disabled={isPending}>
-            Cancel
-          </Button>
-          <Button onClick={save} disabled={isPending}>
-            {isPending && <Loader2 className="size-4 animate-spin" />}
-            Save
-          </Button>
+        <DialogFooter className="sm:justify-between">
+          {canSendTest && config.enabled ? (
+            <Button
+              variant="outline"
+              onClick={sendTest}
+              disabled={isTesting}
+              className="sm:mr-auto"
+            >
+              {isTesting ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Send className="size-4" />
+              )}
+              Send test
+            </Button>
+          ) : (
+            <span />
+          )}
+          <div className="flex gap-2">
+            <Button variant="ghost" onClick={() => setOpen(false)} disabled={isPending}>
+              Cancel
+            </Button>
+            <Button onClick={save} disabled={isPending}>
+              {isPending && <Loader2 className="size-4 animate-spin" />}
+              Save
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
