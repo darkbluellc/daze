@@ -1,0 +1,62 @@
+# Daze stack.
+#
+# Local dev: `docker compose up -d db` then run `npm run dev` / `npm run worker`
+#   on the host. The dev DB is published on 5433 to avoid clashing with a
+#   local Homebrew Postgres on 5432.
+#
+# Full self-hosted: `docker compose --profile full up --build`. In production you
+#   typically point DATABASE_URL at your own managed Postgres and drop the `db`
+#   service (or keep it).
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: daze
+      POSTGRES_PASSWORD: daze
+      POSTGRES_DB: daze
+    ports:
+      - "5433:5432"
+    volumes:
+      - daze_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U daze -d daze"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    profiles: ["full"]
+    build:
+      context: .
+      target: runner
+    command: ["node", "server.js"]
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Inside the compose network the app talks to `db` on 5432.
+      DATABASE_URL: postgresql://daze:daze@db:5432/daze?schema=public
+      HOSTNAME: "0.0.0.0"
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  worker:
+    profiles: ["full"]
+    build:
+      context: .
+      target: worker
+    command: ["npm", "run", "worker"]
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://daze:daze@db:5432/daze?schema=public
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  daze_pgdata:

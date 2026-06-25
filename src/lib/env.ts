@@ -1,0 +1,42 @@
+// Centralised, validated access to server-side environment variables.
+// Import only from server code (route handlers, server actions, the worker).
+
+function required(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`Missing required env var: ${name}`);
+  }
+  return value;
+}
+
+function optional(name: string): string | undefined {
+  return process.env[name] || undefined;
+}
+
+export const env = {
+  databaseUrl: required("DATABASE_URL"),
+  encryptionKey: required("DAZE_ENCRYPTION_KEY"),
+
+  pushoverAppToken: optional("DAZE_PUSHOVER_APP_TOKEN"),
+
+  google: {
+    clientId: optional("GOOGLE_CLIENT_ID"),
+    clientSecret: optional("GOOGLE_CLIENT_SECRET"),
+    redirectUri:
+      optional("GOOGLE_REDIRECT_URI") ??
+      "http://localhost:3000/api/connections/google/callback",
+  },
+
+  // Empty => open registration. Otherwise a lowercase set of allowed emails.
+  allowedEmails: (optional("DAZE_ALLOWED_EMAILS") ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean),
+
+  dryRun: process.env.DAZE_DRY_RUN === "1",
+} as const;
+
+export function isRegistrationAllowed(email: string): boolean {
+  if (env.allowedEmails.length === 0) return true;
+  return env.allowedEmails.includes(email.trim().toLowerCase());
+}

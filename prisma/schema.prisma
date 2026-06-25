@@ -1,0 +1,288 @@
+// Daze — Prisma schema
+// See plan: /Users/dan/.claude/plans/twinkly-napping-elephant.md
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum LeadTimeUnit {
+  DAY
+  WEEK
+  MONTH
+}
+
+enum ContactSourceType {
+  GOOGLE
+}
+
+enum EventSourceType {
+  HOLIDAY_API
+  ICS
+}
+
+enum SourceStatus {
+  OK
+  ERROR
+  DISCONNECTED
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
+// ---------------------------------------------------------------------------
+// Identity
+// ---------------------------------------------------------------------------
+
+model User {
+  id       String @id @default(cuid())
+  email    String @unique
+  name     String?
+
+  // Credentials auth (argon2id hash)
+  passwordHash String
+
+  // Preferences
+  timezone          String @default("UTC")  // IANA, e.g. "America/New_York"
+  defaultNotifyTime String @default("09:00") // local HH:mm used when no override
+
+  // Pushover (shared app token in env; user supplies their own key)
+  pushoverUserKey    String? // encrypted at rest (AES-256-GCM)
+  pushoverDevice     String?
+  pushoverVerifiedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  contactSources         ContactSource[]
+  eventSources           EventSource[]
+  contacts               Contact[]
+  events                 Event[]
+  leadTimes              LeadTime[]
+  subscriptions          Subscription[]
+  scheduledNotifications ScheduledNotification[]
+}
+
+// ---------------------------------------------------------------------------
+// Contact provider (pluggable; Google now)
+// ---------------------------------------------------------------------------
+
+model ContactSource {
+  id     String            @id @default(cuid())
+  userId String
+  user   User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type   ContactSourceType @default(GOOGLE)
+
+  // Connected account identity
+  externalAccountId String  // e.g. Google `sub`
+  accountEmail      String?
+
+  // OAuth credentials (encrypted at rest)
+  accessToken    String?
+  refreshToken   String?
+  tokenExpiresAt DateTime?
+  scope          String?
+
+  // Incremental sync
+  syncToken    String?
+  status       SourceStatus @default(OK)
+  lastError    String?
+  lastSyncedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  contacts Contact[]
+
+  @@unique([userId, type, externalAccountId])
+  @@index([userId])
+}
+
+model Contact {
+  id              String        @id @default(cuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contactSourceId String
+  contactSource   ContactSource @relation(fields: [contactSourceId], references: [id], onDelete: Cascade)
+
+  externalId  String // Google resourceName
+  displayName String
+  givenName   String?
+  familyName  String?
+
+  // Birthday: month/day always present (a birthday exists); year optional
+  birthdayMonth Int
+  birthdayDay   Int
+  birthdayYear  Int?
+
+  raw Json? // raw provider payload for debugging / future fields
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  subscription Subscription?
+
+  @@unique([contactSourceId, externalId])
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Event provider (pluggable; holiday API now, ICS later)
+// ---------------------------------------------------------------------------
+
+model EventSource {
+  id      String          @id @default(cuid())
+  userId  String
+  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type    EventSourceType
+  name    String
+  config  Json // { countryCode } for HOLIDAY_API; { url } for ICS
+  enabled Boolean         @default(true)
+
+  status       SourceStatus @default(OK)
+  lastError    String?
+  lastSyncedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  events Event[]
+
+  @@index([userId])
+}
+
+model Event {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventSourceId String
+  eventSource   EventSource @relation(fields: [eventSourceId], references: [id], onDelete: Cascade)
+
+  externalId String // stable per source (holiday id, ICS UID, includes year if dated)
+  title      String
+
+  // Occurrence model — mirrors Contact birthday math
+  month             Int
+  day               Int
+  year              Int? // null when recurringAnnually
+  recurringAnnually Boolean @default(false)
+
+  raw Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  subscription Subscription?
+
+  @@unique([eventSourceId, externalId])
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Notification configuration
+// ---------------------------------------------------------------------------
+
+// User-defined menu of advance durations (e.g. "1 week" = 1 WEEK)
+model LeadTime {
+  id     String       @id @default(cuid())
+  userId String
+  user   User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label  String
+  value  Int
+  unit   LeadTimeUnit
+
+  createdAt DateTime @default(now())
+
+  subscriptionLinks SubscriptionLeadTime[]
+
+  @@unique([userId, label])
+  @@index([userId])
+}
+
+// Per-item config. Exactly one of contactId / eventId is set (enforced in app).
+model Subscription {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  contactId String?  @unique
+  contact   Contact? @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  eventId   String?  @unique
+  event     Event?   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  enabled         Boolean   @default(false) // default-off rule
+  sendDayOf       Boolean   @default(false)
+  dayOfTimeOverride String? // local HH:mm; falls back to User.defaultNotifyTime
+  acknowledgedAt  DateTime? // set once user has seen/configured this item
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  leadTimes              SubscriptionLeadTime[]
+  scheduledNotifications ScheduledNotification[]
+
+  @@index([userId])
+}
+
+model SubscriptionLeadTime {
+  id             String       @id @default(cuid())
+  subscriptionId String
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  leadTimeId     String
+  leadTime       LeadTime     @relation(fields: [leadTimeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([subscriptionId, leadTimeId])
+  @@index([subscriptionId])
+}
+
+// ---------------------------------------------------------------------------
+// Materialized send schedule (audit + idempotency + UI)
+// ---------------------------------------------------------------------------
+
+model ScheduledNotification {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  subscriptionId String
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  // null leadTimeId => day-of notification
+  leadTimeId String?
+
+  occurrenceDate DateTime @db.Date // the birthday/holiday date for this cycle
+  scheduledFor   DateTime // UTC instant to fire
+
+  // Stable idempotency key: `${subscriptionId}:${leadTimeId ?? 'dayof'}:${occurrenceISO}`
+  dedupeKey String @unique
+
+  title String
+  body  String
+
+  status          NotificationStatus @default(PENDING)
+  attempts        Int                @default(0)
+  sentAt          DateTime?
+  error           String?
+  pushoverReceipt String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, scheduledFor])
+  @@index([userId])
+  @@index([subscriptionId])
+}
