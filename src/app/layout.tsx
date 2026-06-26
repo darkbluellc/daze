@@ -21,8 +21,18 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Daze",
-  description: "Birthday and holiday reminders via Pushover",
+  metadataBase: new URL("https://daze.drkbl.co"),
+  title: "Daze — never miss a birthday again",
+  description:
+    "Daze watches your contacts and the calendar and nudges you on Pushover for birthdays and holidays — day-of or as far ahead as you like.",
+  openGraph: {
+    title: "Daze — never miss a birthday again",
+    description:
+      "Birthday and holiday reminders via Pushover. Day-of or days ahead, with your notes attached.",
+    url: "https://daze.drkbl.co",
+    siteName: "Daze",
+    images: ["/screenshots/dashboard-light.png"],
+  },
 };
 
 export default function RootLayout({
