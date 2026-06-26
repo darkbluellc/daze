@@ -1,41 +1,27 @@
 # syntax=docker/dockerfile:1
 #
-# Web image (Next.js). The LAST stage is `runner`, so a plain `docker build`
-# (which is what Coolify/Nixpacks run with no --target) produces the web server.
-# The pg-boss worker has its own Dockerfile.worker.
+# Single application image for Daze. Runs the Next.js web server by default; the
+# worker service overrides the command (`prisma migrate deploy && npm run
+# worker`). Building ONE image instead of separate web + worker images roughly
+# halves deploy time. The npm cache mount keeps `npm ci` fast across builds.
 
-# ---- base -------------------------------------------------------------------
-FROM node:22-alpine AS base
+FROM node:22-alpine
 WORKDIR /app
 RUN apk add --no-cache libc6-compat openssl
 
-# ---- deps -------------------------------------------------------------------
-FROM base AS deps
+# Install deps first so this layer is cached unless package*.json / schema change.
+# The postinstall hook runs `prisma generate`, which needs the schema.
 COPY package.json package-lock.json ./
 COPY prisma ./prisma
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm npm ci
 
-# ---- builder ----------------------------------------------------------------
-FROM base AS builder
-COPY --from=deps /app/node_modules ./node_modules
+# Build (source changes each deploy, so this is the unavoidable per-deploy cost).
 COPY . .
-RUN npx prisma generate
 RUN npm run build
 
-# ---- runner (Next.js web — final stage) -------------------------------------
-FROM base AS runner
 ENV NODE_ENV=production
 ENV PORT=3000
-# Bind to all interfaces so the reverse proxy can reach the container.
-ENV HOSTNAME=0.0.0.0
-RUN addgroup -S nodejs && adduser -S nextjs -G nodejs
-
-COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-# Ensure the Prisma query engine ships with the standalone bundle.
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
-
-USER nextjs
 EXPOSE 3000
-CMD ["node", "server.js"]
+
+# Web by default. `next start` binds 0.0.0.0 so the reverse proxy can reach it.
+CMD ["npm", "run", "start", "--", "-H", "0.0.0.0", "-p", "3000"]

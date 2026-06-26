@@ -19,10 +19,12 @@
 # Generate the two keys with:  openssl rand -hex 32
 
 services:
+  # The image is built once here; the worker reuses it (no second build).
   web:
     build:
       context: .
       dockerfile: Dockerfile
+    image: daze-app:latest
     restart: unless-stopped
     environment:
       # Declaring this makes Coolify create a domain and route it to port 3000.
@@ -42,10 +44,11 @@ services:
       - "3000"
 
   worker:
-    build:
-      context: .
-      dockerfile: Dockerfile.worker
+    image: daze-app:latest
+    command: ["sh", "-c", "npx prisma migrate deploy && npm run worker"]
     restart: unless-stopped
+    depends_on:
+      - web
     environment:
       - DATABASE_URL=${DATABASE_URL}
       # Must match the web app exactly — the worker decrypts what web encrypted.

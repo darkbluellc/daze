@@ -26,11 +26,13 @@ services:
       timeout: 5s
       retries: 10
 
+  # Built once; the worker reuses the same image.
   web:
     profiles: ["full"]
     build:
       context: .
       dockerfile: Dockerfile
+    image: daze-app:latest
     restart: unless-stopped
     env_file: .env
     environment:
@@ -44,9 +46,8 @@ services:
 
   worker:
     profiles: ["full"]
-    build:
-      context: .
-      dockerfile: Dockerfile.worker
+    image: daze-app:latest
+    command: ["sh", "-c", "npx prisma migrate deploy && npm run worker"]
     restart: unless-stopped
     env_file: .env
     environment:
@@ -54,6 +55,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      web:
+        condition: service_started
 
 volumes:
   daze_pgdata:
