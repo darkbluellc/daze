@@ -1,0 +1,77 @@
+# Coolify "Docker Compose" deployment for Daze: web + worker + Postgres.
+#
+# In Coolify: New Resource → Docker Compose (from your Git repo) → set the
+# "Docker Compose Location" to this file (/docker-compose.coolify.yml).
+#
+# Coolify auto-substitutes the SERVICE_* "magic" variables:
+#   • SERVICE_FQDN_WEB_3000 → generates a domain and routes it to web:3000
+#   • SERVICE_URL_WEB       → the resulting https:// URL
+#   • SERVICE_PASSWORD_DB   → a generated Postgres password (same value reused)
+#
+# Set the real secrets in Coolify → Environment Variables (referenced as ${...}):
+#   AUTH_SECRET, DAZE_ENCRYPTION_KEY, DAZE_PUSHOVER_APP_TOKEN,
+#   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
+# Generate the two keys with:  openssl rand -hex 32
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: daze
+      POSTGRES_PASSWORD: ${SERVICE_PASSWORD_DB}
+      POSTGRES_DB: daze
+    volumes:
+      - daze-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U daze -d daze"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      # Declaring this makes Coolify create a domain and route it to port 3000.
+      - SERVICE_FQDN_WEB_3000
+      - DATABASE_URL=postgresql://daze:${SERVICE_PASSWORD_DB}@db:5432/daze
+      - AUTH_URL=${SERVICE_URL_WEB}
+      - NEXTAUTH_URL=${SERVICE_URL_WEB}
+      - DAZE_APP_URL=${SERVICE_URL_WEB}
+      - AUTH_TRUST_HOST=true
+      - AUTH_SECRET=${AUTH_SECRET}
+      - DAZE_ENCRYPTION_KEY=${DAZE_ENCRYPTION_KEY}
+      - DAZE_PUSHOVER_APP_TOKEN=${DAZE_PUSHOVER_APP_TOKEN}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GOOGLE_REDIRECT_URI=${SERVICE_URL_WEB}/api/connections/google/callback
+    expose:
+      - "3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql://daze:${SERVICE_PASSWORD_DB}@db:5432/daze
+      # Must match the web app exactly — the worker decrypts what web encrypted.
+      - DAZE_ENCRYPTION_KEY=${DAZE_ENCRYPTION_KEY}
+      - DAZE_APP_URL=${SERVICE_URL_WEB}
+      - DAZE_PUSHOVER_APP_TOKEN=${DAZE_PUSHOVER_APP_TOKEN}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GOOGLE_REDIRECT_URI=${SERVICE_URL_WEB}/api/connections/google/callback
+      # - DAZE_DRY_RUN=1   # uncomment to log instead of sending
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  daze-pgdata:

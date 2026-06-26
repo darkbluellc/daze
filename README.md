@@ -63,6 +63,17 @@ deploy it first (the web app self-heals once the schema exists). Set
 `AUTH_URL` / `DAZE_APP_URL` to your public `https://` domain and add
 `https://<domain>/api/connections/google/callback` to your Google OAuth client.
 
+### Alternatively: one Docker Compose resource
+
+Prefer a single resource? Use Coolify's **Docker Compose** build pack and point
+"Docker Compose Location" at [`docker-compose.coolify.yml`](docker-compose.coolify.yml).
+It defines `web`, `worker`, and `db` together. Coolify fills in the domain and
+Postgres password via `SERVICE_*` magic variables; you only set the real secrets
+(`AUTH_SECRET`, `DAZE_ENCRYPTION_KEY`, `DAZE_PUSHOVER_APP_TOKEN`,
+`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`) under Environment Variables. The
+embedded `db` won't get Coolify's managed backups — for production, drop the `db`
+service and point `DATABASE_URL` at a separate Coolify Postgres resource.
+
 ## Required configuration
 
 | Var | Purpose |
