@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 
 import { registerAction, type AuthFormState } from "../actions";
 import {
@@ -22,6 +22,20 @@ export default function RegisterPage() {
     undefined,
   );
 
+  // Detect the browser's timezone so the new account starts in the right one.
+  // Written to the hidden input via a ref (after mount) — no state, no hydration
+  // mismatch; the server falls back to UTC if it's blank.
+  const tzRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    try {
+      if (tzRef.current) {
+        tzRef.current.value = Intl.DateTimeFormat().resolvedOptions().timeZone ?? "";
+      }
+    } catch {
+      // leave blank
+    }
+  }, []);
+
   return (
     <Card>
       <CardHeader>
@@ -31,6 +45,7 @@ export default function RegisterPage() {
         </CardDescription>
       </CardHeader>
       <form action={formAction}>
+        <input ref={tzRef} type="hidden" name="timezone" defaultValue="" />
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">Name</Label>

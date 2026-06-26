@@ -6,6 +6,7 @@ import { signIn } from "@/auth";
 import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/auth/password";
 import { isRegistrationAllowed } from "@/lib/env";
+import { isValidTimezone } from "@/lib/timezone";
 import { loginSchema, registerSchema } from "@/lib/validation";
 
 export type AuthFormState = { error?: string } | undefined;
@@ -44,6 +45,10 @@ export async function registerAction(
     return { error: "An account with that email already exists." };
   }
 
+  // Initial timezone from the browser (sent as a hidden field); fall back to UTC.
+  const tzInput = String(formData.get("timezone") ?? "");
+  const timezone = isValidTimezone(tzInput) ? tzInput : "UTC";
+
   const passwordHash = await hashPassword(password);
 
   await prisma.user.create({
@@ -51,6 +56,7 @@ export async function registerAction(
       name,
       email,
       passwordHash,
+      timezone,
       // Give every new account a useful default menu of lead times.
       leadTimes: { create: DEFAULT_LEAD_TIMES },
     },

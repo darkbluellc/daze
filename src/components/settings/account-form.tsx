@@ -14,13 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/searchable-select";
 import { SubmitButton } from "@/components/submit-button";
 
 export function AccountForm({
@@ -62,19 +56,14 @@ export function AccountForm({
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="timezone">Timezone</Label>
-              {/* Hidden input lets the Select value submit with the form. */}
-              <Select name="timezone" defaultValue={defaultTimezone}>
-                <SelectTrigger id="timezone" className="w-full">
-                  <SelectValue placeholder="Select timezone" />
-                </SelectTrigger>
-                <SelectContent className="max-h-72">
-                  {timezones.map((tz) => (
-                    <SelectItem key={tz} value={tz}>
-                      {tz}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="timezone"
+                name="timezone"
+                defaultValue={defaultTimezone}
+                options={timezones.map((tz) => ({ value: tz, label: tz }))}
+                placeholder="Search timezones…"
+                className="w-full"
+              />
             </div>
 
             <div className="space-y-2">

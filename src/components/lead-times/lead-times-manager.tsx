@@ -13,13 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/searchable-select";
 import { SubmitButton } from "@/components/submit-button";
 
 export type LeadTimeRow = {
@@ -29,8 +23,11 @@ export type LeadTimeRow = {
   unit: "DAY" | "WEEK" | "MONTH";
 };
 
-// Maps the stored value to a readable label so the trigger shows "Weeks", not "WEEK".
-const UNIT_ITEMS = { DAY: "Days", WEEK: "Weeks", MONTH: "Months" };
+const UNIT_OPTIONS = [
+  { value: "DAY", label: "Days" },
+  { value: "WEEK", label: "Weeks" },
+  { value: "MONTH", label: "Months" },
+];
 
 export function LeadTimesManager({ leadTimes }: { leadTimes: LeadTimeRow[] }) {
   const formRef = useRef<HTMLFormElement>(null);
@@ -82,16 +79,13 @@ export function LeadTimesManager({ leadTimes }: { leadTimes: LeadTimeRow[] }) {
             </div>
             <div className="w-36 space-y-2">
               <Label htmlFor="unit">Unit</Label>
-              <Select name="unit" defaultValue="WEEK" items={UNIT_ITEMS}>
-                <SelectTrigger id="unit" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="DAY">Days</SelectItem>
-                  <SelectItem value="WEEK">Weeks</SelectItem>
-                  <SelectItem value="MONTH">Months</SelectItem>
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                id="unit"
+                name="unit"
+                defaultValue="WEEK"
+                options={UNIT_OPTIONS}
+                className="w-full"
+              />
             </div>
             <SubmitButton>Add lead time</SubmitButton>
           </form>

@@ -5,19 +5,10 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
+import { isValidTimezone } from "@/lib/timezone";
 import { accountSettingsSchema, changePasswordSchema } from "@/lib/validation";
 
 export type FormState = { ok?: boolean; error?: string; message?: string };
-
-function isValidTimezone(tz: string): boolean {
-  try {
-    // Throws RangeError for unknown zones.
-    Intl.DateTimeFormat(undefined, { timeZone: tz });
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 export async function updateAccountAction(
   _prev: FormState,

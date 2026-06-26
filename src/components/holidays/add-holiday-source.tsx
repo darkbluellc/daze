@@ -9,13 +9,7 @@ import {
 } from "@/app/(app)/holidays/actions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableSelect } from "@/components/searchable-select";
 import { SubmitButton } from "@/components/submit-button";
 
 export type Country = { countryCode: string; name: string };
@@ -33,10 +27,6 @@ export function AddHolidaySource({ countries }: { countries: Country[] }) {
   }, [state]);
 
   const selectedName = countries.find((c) => c.countryCode === code)?.name ?? "";
-  // Lets the trigger show the country name rather than its code.
-  const countryItems = Object.fromEntries(
-    countries.map((c) => [c.countryCode, c.name]),
-  );
 
   return (
     <Card>
@@ -49,22 +39,17 @@ export function AddHolidaySource({ countries }: { countries: Country[] }) {
           <input type="hidden" name="countryName" value={selectedName} />
           <div className="min-w-56 grow space-y-2">
             <Label htmlFor="country">Country</Label>
-            <Select
+            <SearchableSelect
+              id="country"
               value={code}
-              onValueChange={(v) => setCode(v ?? "")}
-              items={countryItems}
-            >
-              <SelectTrigger id="country" className="w-full">
-                <SelectValue placeholder="Select a country" />
-              </SelectTrigger>
-              <SelectContent className="max-h-72">
-                {countries.map((c) => (
-                  <SelectItem key={c.countryCode} value={c.countryCode}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              onValueChange={setCode}
+              options={countries.map((c) => ({
+                value: c.countryCode,
+                label: c.name,
+              }))}
+              placeholder="Search countries…"
+              className="w-full"
+            />
           </div>
           <SubmitButton disabled={!code}>Add holidays</SubmitButton>
         </form>
