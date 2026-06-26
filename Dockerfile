@@ -24,8 +24,10 @@ COPY prisma ./prisma
 RUN --mount=type=cache,target=/root/.npm npm ci
 
 # Build (source changes each deploy, so this is the unavoidable per-deploy cost).
+# Raise the V8 heap ceiling for the build to avoid OOM on small build servers
+# (in-build type-checking is also disabled via next.config.ts).
 COPY . .
-RUN npm run build
+RUN NODE_OPTIONS=--max-old-space-size=4096 npm run build
 
 ENV NODE_ENV=production
 ENV PORT=3000
