@@ -4,10 +4,18 @@
 # worker service overrides the command (`prisma migrate deploy && npm run
 # worker`). Building ONE image instead of separate web + worker images roughly
 # halves deploy time. The npm cache mount keeps `npm ci` fast across builds.
+#
+# Debian "slim" (glibc) rather than Alpine (musl): Next.js's SWC/Turbopack
+# native binaries, Prisma's engine, and @node-rs/argon2 all target glibc first,
+# so this avoids a class of musl-only build/runtime failures.
 
-FROM node:22-alpine
+FROM node:22-slim
 WORKDIR /app
-RUN apk add --no-cache libc6-compat openssl
+ENV NEXT_TELEMETRY_DISABLED=1
+# openssl: Prisma engine. ca-certificates: outbound TLS (Google, Pushover, holidays).
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
 
 # Install deps first so this layer is cached unless package*.json / schema change.
 # The postinstall hook runs `prisma generate`, which needs the schema.

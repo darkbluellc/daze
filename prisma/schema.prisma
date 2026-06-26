@@ -2,9 +2,10 @@
 // See plan: /Users/dan/.claude/plans/twinkly-napping-elephant.md
 
 generator client {
-  provider      = "prisma-client-js"
-  // "native" for local dev; the musl target is what the Alpine Docker images use.
-  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+  provider = "prisma-client-js"
+  // The Docker image is Debian (glibc); "native" resolves to the right engine
+  // both there and in local dev.
+  binaryTargets = ["native"]
 }
 
 datasource db {
