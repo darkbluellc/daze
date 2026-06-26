@@ -7,6 +7,9 @@ const nextConfig: NextConfig = {
     // dev/CI), so skip it during the production build.
     ignoreBuildErrors: true,
   },
+  // node-ical pulls in temporal-polyfill (heavy BigInt use) which breaks when
+  // bundled ("h.BigInt is not a function"). Load it natively instead of bundling.
+  serverExternalPackages: ["node-ical"],
 };
 
 export default nextConfig;
