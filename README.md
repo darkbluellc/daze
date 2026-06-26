@@ -67,12 +67,13 @@ deploy it first (the web app self-heals once the schema exists). Set
 
 Prefer a single resource? Use Coolify's **Docker Compose** build pack and point
 "Docker Compose Location" at [`docker-compose.coolify.yml`](docker-compose.coolify.yml).
-It defines `web`, `worker`, and `db` together. Coolify fills in the domain and
-Postgres password via `SERVICE_*` magic variables; you only set the real secrets
-(`AUTH_SECRET`, `DAZE_ENCRYPTION_KEY`, `DAZE_PUSHOVER_APP_TOKEN`,
-`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`) under Environment Variables. The
-embedded `db` won't get Coolify's managed backups — for production, drop the `db`
-service and point `DATABASE_URL` at a separate Coolify Postgres resource.
+It defines the `web` and `worker` services and expects an **existing Postgres**
+via `DATABASE_URL`. Coolify fills in the domain via `SERVICE_*` magic variables;
+you set the secrets under Environment Variables: `DATABASE_URL`, `AUTH_SECRET`,
+`DAZE_ENCRYPTION_KEY`, `DAZE_PUSHOVER_APP_TOKEN`, `GOOGLE_CLIENT_ID`,
+`GOOGLE_CLIENT_SECRET`. The Postgres must be reachable from these containers on
+the Docker network — if it's a separate Coolify resource, connect them to a
+shared network and use its container/service name as the host in `DATABASE_URL`.
 
 ## Required configuration
 
