@@ -30,14 +30,12 @@ services:
     profiles: ["full"]
     build:
       context: .
-      target: runner
-    command: ["node", "server.js"]
+      dockerfile: Dockerfile
     restart: unless-stopped
     env_file: .env
     environment:
       # Inside the compose network the app talks to `db` on 5432.
       DATABASE_URL: postgresql://daze:daze@db:5432/daze?schema=public
-      HOSTNAME: "0.0.0.0"
     ports:
       - "3000:3000"
     depends_on:
@@ -48,8 +46,7 @@ services:
     profiles: ["full"]
     build:
       context: .
-      target: worker
-    command: ["npm", "run", "worker"]
+      dockerfile: Dockerfile.worker
     restart: unless-stopped
     env_file: .env
     environment:

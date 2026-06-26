@@ -41,14 +41,39 @@ docker compose --profile full up --build
 Point `DATABASE_URL` at your Postgres. The `worker` service runs
 `prisma migrate deploy` on boot before starting the scheduler.
 
+Daze is **two images**: `Dockerfile` builds the web server (Next.js standalone,
+listens on `3000`) and `Dockerfile.worker` builds the pg-boss scheduler. Don't
+build a single Dockerfile expecting both — they are separate processes.
+
+## Deploying on Coolify (or any PaaS)
+
+Create **two applications from this repo** plus a Postgres database:
+
+1. **Postgres** — create a Postgres resource; copy its internal connection URL.
+2. **Web app** — Build Pack: Dockerfile · Dockerfile Location: `/Dockerfile` ·
+   Ports Exposes: `3000` · assign your domain. Leave the start command blank
+   (the image already runs `node server.js`).
+3. **Worker app** — Build Pack: Dockerfile · Dockerfile Location:
+   `/Dockerfile.worker` · no domain · **disable the health check** (it has no
+   HTTP port).
+
+Both apps need the **same** `DATABASE_URL` and `DAZE_ENCRYPTION_KEY` (the worker
+decrypts tokens the web app encrypted). The worker runs migrations on boot, so
+deploy it first (the web app self-heals once the schema exists). Set
+`AUTH_URL` / `DAZE_APP_URL` to your public `https://` domain and add
+`https://<domain>/api/connections/google/callback` to your Google OAuth client.
+
 ## Required configuration
 
 | Var | Purpose |
 | --- | --- |
-| `DATABASE_URL` | Postgres connection string |
+| `DATABASE_URL` | Postgres connection string (same on web + worker) |
 | `AUTH_SECRET` | Auth.js session secret |
-| `DAZE_ENCRYPTION_KEY` | 32-byte hex; encrypts OAuth tokens + Pushover keys at rest |
+| `AUTH_URL` | Public base URL, e.g. `https://daze.example.com` |
+| `DAZE_ENCRYPTION_KEY` | 32-byte hex; encrypts tokens at rest (same on web + worker) |
+| `DAZE_APP_URL` | Public base URL for notification deep links (defaults to `AUTH_URL`) |
 | `DAZE_PUSHOVER_APP_TOKEN` | One Pushover application token for the instance |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth with People API enabled |
+| `GOOGLE_REDIRECT_URI` | `https://<domain>/api/connections/google/callback` |
 | `DAZE_ALLOWED_EMAILS` | Optional registration allowlist |
 | `DAZE_DRY_RUN` | `1` logs notifications instead of sending |
