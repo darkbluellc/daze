@@ -91,12 +91,12 @@ export default async function LandingPage() {
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-lg text-muted-foreground">
             Daze quietly watches your contacts and the calendar, then nudges you
-            on Pushover — day-of, or as far ahead as you like. So you always show
-            up on time, for the people who matter.
+            on Pushover—day-of or as far ahead as you like—so you always show
+            up on time for the people who matter.
           </p>
           <div className="mt-8 flex items-center justify-center gap-3">
             <ButtonLink href={loggedIn ? "/dashboard" : "/register"} size="lg">
-              {loggedIn ? "Open the app" : "Get started — it's free"}
+              {loggedIn ? "Open the app" : "Get started—it's free"}
               <ArrowRight className="size-4" />
             </ButtonLink>
             <ButtonLink href="#features" variant="outline" size="lg">
@@ -135,7 +135,7 @@ export default async function LandingPage() {
           alt="Configuring a birthday reminder"
         >
           <p>
-            Get a nudge on the day at a time you choose — and as many lead times
+            Get a nudge on the day at a time you choose—and as many lead times
             ahead as you want: a day, a week, a month. Mix and match per person.
           </p>
           <p>
@@ -171,7 +171,7 @@ export default async function LandingPage() {
         >
           <p>
             Connect Google Contacts and Daze imports every birthday. New ones
-            always start <span className="text-foreground">off</span> — you decide
+            always start <span className="text-foreground">off</span>—you decide
             who&apos;s worth a reminder, never the other way around.
           </p>
           <p>
@@ -202,7 +202,7 @@ export default async function LandingPage() {
               {
                 icon: CalendarClock,
                 title: "Get a gentle nudge",
-                body: "Daze sends the right reminder at the right time — with your notes attached.",
+                body: "Daze sends the right reminder at the right time—with your notes attached.",
               },
             ].map((step, i) => (
               <div key={step.title} className="rounded-xl border bg-card p-6">
