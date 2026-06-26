@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client";
 
 import { requireUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
+import { formatLeadTime } from "@/lib/dates";
 import { leadTimeSchema } from "@/lib/validation";
 
 export type ActionState = { ok?: boolean; error?: string; message?: string };
@@ -16,7 +17,6 @@ export async function createLeadTimeAction(
   const user = await requireUser();
 
   const parsed = leadTimeSchema.safeParse({
-    label: formData.get("label"),
     value: formData.get("value"),
     unit: formData.get("unit"),
   });
@@ -24,13 +24,16 @@ export async function createLeadTimeAction(
     return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
 
+  // Auto-generate a tidy, pluralized label, e.g. "1 day before" / "2 weeks before".
+  const label = `${formatLeadTime(parsed.data.value, parsed.data.unit)} before`;
+
   try {
     await prisma.leadTime.create({
-      data: { userId: user.id, ...parsed.data },
+      data: { userId: user.id, label, ...parsed.data },
     });
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
-      return { error: "You already have a lead time with that label." };
+      return { error: "You already have that lead time." };
     }
     throw e;
   }

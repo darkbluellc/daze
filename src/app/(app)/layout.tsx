@@ -4,6 +4,7 @@ import { Gift } from "lucide-react";
 import { requireUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { getUnreviewedBirthdays } from "@/lib/services/onboarding";
+import { listLeadTimes } from "@/lib/services/lead-times";
 import { Nav } from "@/components/nav";
 import { UserMenu } from "@/components/user-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -23,10 +24,7 @@ export default async function AppLayout({
   // New, unconfigured birthdays to surface in the onboarding prompt.
   const [onboardingItems, leadTimes, brokenSourceRows] = await Promise.all([
     getUnreviewedBirthdays(user.id),
-    prisma.leadTime.findMany({
-      where: { userId: user.id },
-      orderBy: { createdAt: "asc" },
-    }),
+    listLeadTimes(user.id),
     prisma.contactSource.findMany({
       where: { userId: user.id, status: { in: ["ERROR", "DISCONNECTED"] } },
       select: { id: true, accountEmail: true },

@@ -1,14 +1,11 @@
 import { requireUser } from "@/lib/auth/session";
-import { prisma } from "@/lib/db";
+import { listLeadTimes } from "@/lib/services/lead-times";
 import { PageHeader } from "@/components/page-header";
 import { LeadTimesManager } from "@/components/lead-times/lead-times-manager";
 
 export default async function LeadTimesPage() {
   const user = await requireUser();
-  const leadTimes = await prisma.leadTime.findMany({
-    where: { userId: user.id },
-    orderBy: { createdAt: "asc" },
-  });
+  const leadTimes = await listLeadTimes(user.id);
 
   return (
     <>

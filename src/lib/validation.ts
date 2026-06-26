@@ -41,7 +41,7 @@ export const changePasswordSchema = z.object({
 });
 
 export const leadTimeSchema = z.object({
-  label: z.string().trim().min(1, "Label is required").max(40),
+  // The label is generated from value + unit; only these two are user input.
   value: z.coerce.number().int().min(1, "Must be at least 1").max(365),
   unit: z.enum(["DAY", "WEEK", "MONTH"]),
 });

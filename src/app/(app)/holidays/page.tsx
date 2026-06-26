@@ -3,6 +3,7 @@ import { DateTime } from "luxon";
 import { requireUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { occurrenceInYear, nextOccurrence, describeUntil } from "@/lib/dates";
+import { listLeadTimes } from "@/lib/services/lead-times";
 import { fetchAvailableCountries } from "@/lib/providers/events/holiday-api";
 import { PageHeader } from "@/components/page-header";
 import { AddHolidaySource, type Country } from "@/components/holidays/add-holiday-source";
@@ -28,10 +29,7 @@ export default async function HolidaysPage() {
         },
       },
     }),
-    prisma.leadTime.findMany({
-      where: { userId: user.id },
-      orderBy: { createdAt: "asc" },
-    }),
+    listLeadTimes(user.id),
     fetchAvailableCountries().catch(() => [] as Country[]),
   ]);
 

@@ -80,6 +80,18 @@ export function formatLeadTime(value: number, unit: LeadTimeUnit): string {
   return `${value} ${value === 1 ? unitLabel : `${unitLabel}s`}`;
 }
 
+/** Approximate length in days — used to sort lead times by ascending duration. */
+export function leadTimeToDays(value: number, unit: LeadTimeUnit): number {
+  switch (unit) {
+    case "DAY":
+      return value;
+    case "WEEK":
+      return value * 7;
+    case "MONTH":
+      return value * 30;
+  }
+}
+
 /** Friendly "in N days" / "today" / "tomorrow" relative to now. */
 export function describeUntil(
   occurrence: DateTime,

@@ -29,6 +29,9 @@ export type LeadTimeRow = {
   unit: "DAY" | "WEEK" | "MONTH";
 };
 
+// Maps the stored value to a readable label so the trigger shows "Weeks", not "WEEK".
+const UNIT_ITEMS = { DAY: "Days", WEEK: "Weeks", MONTH: "Months" };
+
 export function LeadTimesManager({ leadTimes }: { leadTimes: LeadTimeRow[] }) {
   const formRef = useRef<HTMLFormElement>(null);
   const [state, formAction] = useActionState<ActionState, FormData>(
@@ -65,11 +68,7 @@ export function LeadTimesManager({ leadTimes }: { leadTimes: LeadTimeRow[] }) {
             action={formAction}
             className="flex flex-wrap items-end gap-3"
           >
-            <div className="grow space-y-2">
-              <Label htmlFor="label">Label</Label>
-              <Input id="label" name="label" placeholder="1 week before" required />
-            </div>
-            <div className="w-24 space-y-2">
+            <div className="w-28 space-y-2">
               <Label htmlFor="value">Amount</Label>
               <Input
                 id="value"
@@ -81,9 +80,9 @@ export function LeadTimesManager({ leadTimes }: { leadTimes: LeadTimeRow[] }) {
                 required
               />
             </div>
-            <div className="w-32 space-y-2">
+            <div className="w-36 space-y-2">
               <Label htmlFor="unit">Unit</Label>
-              <Select name="unit" defaultValue="WEEK">
+              <Select name="unit" defaultValue="WEEK" items={UNIT_ITEMS}>
                 <SelectTrigger id="unit" className="w-full">
                   <SelectValue />
                 </SelectTrigger>
@@ -94,7 +93,7 @@ export function LeadTimesManager({ leadTimes }: { leadTimes: LeadTimeRow[] }) {
                 </SelectContent>
               </Select>
             </div>
-            <SubmitButton>Add</SubmitButton>
+            <SubmitButton>Add lead time</SubmitButton>
           </form>
         </CardContent>
       </Card>

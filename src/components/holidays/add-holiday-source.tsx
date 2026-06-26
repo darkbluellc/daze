@@ -33,6 +33,10 @@ export function AddHolidaySource({ countries }: { countries: Country[] }) {
   }, [state]);
 
   const selectedName = countries.find((c) => c.countryCode === code)?.name ?? "";
+  // Lets the trigger show the country name rather than its code.
+  const countryItems = Object.fromEntries(
+    countries.map((c) => [c.countryCode, c.name]),
+  );
 
   return (
     <Card>
@@ -45,7 +49,11 @@ export function AddHolidaySource({ countries }: { countries: Country[] }) {
           <input type="hidden" name="countryName" value={selectedName} />
           <div className="min-w-56 grow space-y-2">
             <Label htmlFor="country">Country</Label>
-            <Select value={code} onValueChange={(v) => setCode(v ?? "")}>
+            <Select
+              value={code}
+              onValueChange={(v) => setCode(v ?? "")}
+              items={countryItems}
+            >
               <SelectTrigger id="country" className="w-full">
                 <SelectValue placeholder="Select a country" />
               </SelectTrigger>

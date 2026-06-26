@@ -3,6 +3,7 @@ import { Cake } from "lucide-react";
 
 import { requireUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
+import { listLeadTimes } from "@/lib/services/lead-times";
 import { nextOccurrence, ageOnOccurrence, describeUntil } from "@/lib/dates";
 import { PageHeader } from "@/components/page-header";
 import { ButtonLink } from "@/components/button-link";
@@ -22,10 +23,7 @@ export default async function BirthdaysPage() {
         subscription: { include: { leadTimes: true } },
       },
     }),
-    prisma.leadTime.findMany({
-      where: { userId: user.id },
-      orderBy: { createdAt: "asc" },
-    }),
+    listLeadTimes(user.id),
   ]);
 
   const rows = contacts
