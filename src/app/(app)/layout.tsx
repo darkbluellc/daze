@@ -1,17 +1,13 @@
 import Link from "next/link";
-import { DateTime } from "luxon";
 import { Gift } from "lucide-react";
 
 import { requireUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
-import { nextOccurrence, ageOnOccurrence, describeUntil } from "@/lib/dates";
+import { getUnreviewedBirthdays } from "@/lib/services/onboarding";
 import { Nav } from "@/components/nav";
 import { UserMenu } from "@/components/user-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
-import {
-  OnboardingPrompt,
-  type OnboardingItem,
-} from "@/components/onboarding/onboarding-prompt";
+import { OnboardingPrompt } from "@/components/onboarding/onboarding-prompt";
 import {
   ConnectionAlertBanner,
   type BrokenSource,
@@ -23,16 +19,10 @@ export default async function AppLayout({
   children: React.ReactNode;
 }) {
   const user = await requireUser();
-  const tz = user.timezone;
-  const now = DateTime.now().setZone(tz);
 
   // New, unconfigured birthdays to surface in the onboarding prompt.
-  const [unconfigured, leadTimes, brokenSourceRows] = await Promise.all([
-    prisma.subscription.findMany({
-      where: { userId: user.id, acknowledgedAt: null, contactId: { not: null } },
-      include: { contact: true },
-      take: 25,
-    }),
+  const [onboardingItems, leadTimes, brokenSourceRows] = await Promise.all([
+    getUnreviewedBirthdays(user.id),
     prisma.leadTime.findMany({
       where: { userId: user.id },
       orderBy: { createdAt: "asc" },
@@ -47,21 +37,6 @@ export default async function AppLayout({
     id: s.id,
     label: s.accountEmail ? `Google Contacts (${s.accountEmail})` : "Google Contacts",
   }));
-
-  const onboardingItems: OnboardingItem[] = unconfigured
-    .filter((s) => s.contact)
-    .map((s) => {
-      const c = s.contact!;
-      const occ = nextOccurrence(c.birthdayMonth, c.birthdayDay, tz, now);
-      const age = ageOnOccurrence(c.birthdayYear, occ);
-      return {
-        subscriptionId: s.id,
-        name: c.displayName,
-        occLabel: `${occ.toFormat("MMMM d")}${
-          age !== null ? ` · turns ${age}` : ""
-        } · ${describeUntil(occ, now)}`,
-      };
-    });
 
   return (
     <div className="flex min-h-screen flex-1">

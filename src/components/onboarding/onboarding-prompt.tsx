@@ -1,15 +1,14 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Cake, Sparkles } from "lucide-react";
-
+import { BellRing, Cake, Sparkles } from "lucide-react";
 import { toast } from "sonner";
-import { BellRing } from "lucide-react";
 
 import {
   acknowledgeSubscriptionAction,
   quickEnableSubscriptionAction,
+  getUnreviewedBirthdaysAction,
 } from "@/app/(app)/subscriptions/actions";
 import { Button } from "@/components/ui/button";
 import {
@@ -45,6 +44,23 @@ export function OnboardingPrompt({
   const [items, setItems] = useState(initialItems);
   const [isPending, startTransition] = useTransition();
 
+  // Allow any "Review new birthdays" button to summon this prompt on demand
+  // (e.g. after connecting a new source). It pulls a fresh list each time.
+  useEffect(() => {
+    const handler = () =>
+      startTransition(async () => {
+        const fresh = await getUnreviewedBirthdaysAction();
+        if (fresh.length === 0) {
+          toast.success("You're all caught up — no birthdays to review.");
+          return;
+        }
+        setItems(fresh);
+        setOpen(true);
+      });
+    window.addEventListener("daze:review-birthdays", handler);
+    return () => window.removeEventListener("daze:review-birthdays", handler);
+  }, []);
+
   const remove = (subscriptionId: string) => {
     setItems((prev) => {
       const next = prev.filter((i) => i.subscriptionId !== subscriptionId);
@@ -73,15 +89,12 @@ export function OnboardingPrompt({
       }
     });
 
-  const skipAll = () =>
-    startTransition(async () => {
-      await Promise.all(
-        items.map((i) => acknowledgeSubscriptionAction(i.subscriptionId)),
-      );
-      setItems([]);
-      setOpen(false);
-      router.refresh();
-    });
+  // Defer the whole batch without deciding — they stay reviewable (here on next
+  // login, or via a "Review new birthdays" button).
+  const remindLater = () => {
+    setOpen(false);
+    router.refresh();
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -151,8 +164,8 @@ export function OnboardingPrompt({
         </ul>
 
         <DialogFooter>
-          <Button variant="ghost" onClick={skipAll} disabled={isPending}>
-            Skip all for now
+          <Button variant="ghost" onClick={remindLater} disabled={isPending}>
+            Remind me later
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/page-header";
 import { ButtonLink } from "@/components/button-link";
 import { Card, CardContent } from "@/components/ui/card";
 import { BirthdaysList } from "@/components/birthdays/birthdays-list";
+import { ReviewBirthdaysButton } from "@/components/onboarding/review-birthdays-button";
 
 export default async function BirthdaysPage() {
   const user = await requireUser();
@@ -51,11 +52,20 @@ export default async function BirthdaysPage() {
     })
     .sort((a, b) => a.occMillis - b.occMillis);
 
+  const unreviewedCount = contacts.filter(
+    (c) => c.subscription && c.subscription.acknowledgedAt === null,
+  ).length;
+
   return (
     <>
       <PageHeader
         title="Birthdays"
         description="Configure reminders for your contacts' birthdays."
+        action={
+          rows.length > 0 ? (
+            <ReviewBirthdaysButton count={unreviewedCount} />
+          ) : undefined
+        }
       />
 
       {rows.length === 0 ? (

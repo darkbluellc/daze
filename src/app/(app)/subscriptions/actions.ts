@@ -16,9 +16,19 @@ import {
   subscriptionOccurrence,
   buildNotificationContent,
 } from "@/lib/services/notification-content";
+import {
+  getUnreviewedBirthdays,
+  type UnreviewedBirthday,
+} from "@/lib/services/onboarding";
 import type { SubscriptionConfigInput } from "@/lib/validation";
 
 export type SaveResult = { ok: boolean; error?: string };
+
+/** Fresh list of unreviewed birthdays — used to open the review prompt on demand. */
+export async function getUnreviewedBirthdaysAction(): Promise<UnreviewedBirthday[]> {
+  const user = await requireUser();
+  return getUnreviewedBirthdays(user.id);
+}
 
 export async function saveSubscriptionConfigAction(
   subscriptionId: string,
